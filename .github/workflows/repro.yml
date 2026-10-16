@@ -1,0 +1,41 @@
+# Runs the dotnet/efcore#38961 repro against a real SQL Server on GitHub's runners.
+# The 10.x job is EXPECTED to fail: that failure is the evidence.
+name: efcore-38961-repro
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ef: ["9.0.21", "10.0.13"]
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # Throwaway container that only lives for this CI job.
+          MSSQL_SA_PASSWORD: "Repro_38961_Pass!"
+        ports:
+          - 1433:1433
+    env:
+      EF38961_SQLSERVER: "Server=localhost,1433;Database=EfIssue38961;User Id=sa;Password=Repro_38961_Pass!;TrustServerCertificate=True"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Wait for SQL Server
+        run: |
+          for i in $(seq 1 30); do
+            # Port opens before logins are accepted; give the engine a moment to finish starting.
+            (echo > /dev/tcp/localhost/1433) 2>/dev/null && sleep 15 && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: Test on EF Core ${{ matrix.ef }}
+        run: dotnet test -p:EfVer=${{ matrix.ef }} --logger "console;verbosity=detailed"
