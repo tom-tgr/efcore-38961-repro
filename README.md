@@ -26,10 +26,10 @@ LatestComment = e.Comments
 
 ## Results (GitHub Actions, SQL Server 2022, median of 5)
 
-| Outer rows | EF 9.0.21 | EF 10.0.13 |
-|---|---|---|
-| 50 events scattered across the table | 2 ms vs 2 ms | 1,342 ms vs 2 ms |
-| All 5,000 events | 56 ms vs 68 ms | 1,393 ms vs 58 ms |
-| First 50 events (by id) | 1 ms vs 1 ms | 14 ms vs 1 ms |
+| Outer rows | EF 9.0.21 | EF 10.0.13 | EF 10.0.13 + workaround |
+|---|---|---|---|
+| 50 events scattered across the table | 2 ms | 1,342 ms | 2 ms |
+| All 5,000 events | 56 ms | 1,393 ms | 58 ms |
+| First 50 events (by id) | 1 ms | 14 ms | 1 ms |
 
-(reported query vs `OUTER APPLY` equivalent, same EF version)
+Workaround: reference an outer column inside the subquery projection (`EventId = e.Id`), which keeps `OUTER APPLY`.
